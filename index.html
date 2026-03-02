@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quản Lý Kho Chuyên Nghiệp</title>
+    <style>
+        :root { --blue: #007aff; --green: #34c759; --red: #ff3b30; --gray: #8e8e93; --light-bg: #f2f2f7; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--light-bg); margin: 0; padding-bottom: 40px; color: #1c1c1e; }
+        
+        /* Tabs chuyên nghiệp */
+        .tabs { display: flex; background: #fff; padding: 10px; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .tab { flex: 1; padding: 14px; text-align: center; border-radius: 12px; font-weight: 700; color: var(--gray); cursor: pointer; transition: 0.3s; font-size: 15px; }
+        .tab.active { background: var(--blue); color: #fff; box-shadow: 0 4px 8px rgba(0, 122, 255, 0.3); }
+
+        .container { padding: 15px; max-width: 650px; margin: auto; }
+        .card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        
+        h3 { margin: 0 0 15px 0; font-size: 17px; color: #333; display: flex; align-items: center; gap: 8px; }
+        label { display: block; font-size: 13px; font-weight: 600; color: #666; margin-bottom: 6px; }
+        
+        input, select { 
+            width: 100%; padding: 14px; border: 1px solid #d1d1d6; border-radius: 10px; 
+            font-size: 16px; box-sizing: border-box; background: #fff; -webkit-appearance: none;
+        }
+        input:focus, select:focus { border-color: var(--blue); outline: none; background: #fbfbff; }
+        
+        .row { display: flex; gap: 12px; margin-bottom: 10px; }
+        .col { flex: 1; }
+
+        /* Buttons */
+        .btn { border: none; border-radius: 12px; padding: 18px; font-weight: bold; font-size: 16px; width: 100%; cursor: pointer; transition: 0.2s; }
+        .btn:active { transform: scale(0.98); opacity: 0.8; }
+        .btn-add { background: #f0f7ff; color: var(--blue); border: 1px solid #cce3ff; margin-top: 10px; }
+        .btn-save { background: var(--green); color: #fff; margin-top: 15px; box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3); }
+
+        /* Table */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; font-size: 12px; color: var(--gray); border-bottom: 1px solid #eee; padding: 8px 4px; }
+        td { padding: 12px 4px; border-bottom: 1px solid #f2f2f7; font-size: 14px; }
+        .remove-btn { color: var(--red); font-weight: bold; text-align: center; width: 30px; font-size: 18px; }
+        
+        .preview-text { font-size: 11px; color: var(--blue); margin-top: 4px; font-weight: 500; }
+        .badge { background: var(--blue); color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 11px; margin-left: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="tabs">
+    <div id="tabBH" class="tab active" onclick="switchTab('BAN_HANG')">🛒 BÁN HÀNG</div>
+    <div id="tabNK" class="tab" onclick="switchTab('NHAP_KHO')">📦 NHẬP KHO</div>
+</div>
+
+<div class="container">
+    <div class="card">
+        <h3>📄 Thông tin chứng từ</h3>
+        <div class="row">
+            <div class="col" style="flex: 1.5;">
+                <label id="lblMa">Mã đơn:</label>
+                <input type="text" id="maDon" readonly style="background: #f9f9f9; font-weight: bold; color: var(--blue);">
+            </div>
+            <div class="col" style="flex: 1;">
+                <label>Số thứ tự (STT):</label>
+                <input type="number" id="stt" value="1" min="1" oninput="updateMaDon()">
+            </div>
+        </div>
+
+        <label id="lblDoiTuong">Loại khách:</label>
+        <select id="doiTuong">
+            <option value="Khách lẻ">Khách lẻ</option>
+            <option value="Khách sỉ">Khách sỉ</option>
+        </select>
+        <input type="text" id="doiTuongNK" placeholder="Nhập tên nhà cung cấp..." style="display:none;">
+    </div>
+
+    <div class="card">
+        <h3>🛍️ Chọn sản phẩm</h3>
+        <label>Tên hàng hóa:</label>
+        <select id="spSelect" onchange="autoFill()"></select>
+        
+        <div class="row" style="margin-top: 15px;">
+            <div class="col">
+                <label>Size:</label>
+                <select id="size">
+                    <option value="XS">XS</option>
+                    <option value="S">S</option>
+                    <option value="M" selected>M</option>
+                    <option value="L">L</option>
+                    <option value="XL">XL</option>
+                    <option value="2XL">2XL</option>
+                    <option value="3XL">3XL</option>
+                    <option value="4XL">4XL</option>
+                    <option value="5XL">5XL</option>
+                </select>
+            </div>
+            <div class="col">
+                <label>Số lượng:</label>
+                <input type="number" id="sl" value="1" min="1" oninput="updatePreview()">
+            </div>
+        </div>
+        
+        <label>Đơn giá (x1,000 VNĐ):</label>
+        <input type="number" id="gia" placeholder="Ví dụ: 500" oninput="updatePreview()">
+        <div id="previewGia" class="preview-text">Giá thực tế: 0 VNĐ</div>
+
+        <button class="btn btn-add" onclick="addToCart()">+ THÊM VÀO GIỎ HÀNG</button>
+    </div>
+
+    <div class="card">
+        <h3>📋 Danh sách đơn hàng <span id="cartCount" class="badge">0</span></h3>
+        <table id="cartTable">
+            <thead>
+                <tr>
+                    <th>Sản phẩm</th>
+                    <th>Size</th>
+                    <th>SL</th>
+                    <th>Giá (k)</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <button id="btnSubmit" class="btn btn-save" onclick="submitToSheet()">XÁC NHẬN LƯU (GOOGLE SHEET)</button>
+    </div>
+</div>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzOxlAkJwBmLqD-PVo9l75FalzeDi5ugz52UVKzVDD5UjFAA9tj4eK4ui3HKlrwr3sBTQ/exec"; 
+    
+    let currentMode = 'BAN_HANG';
+    let products = [];
+    let cart = [];
+
+    function updateMaDon() {
+        const pre = currentMode === 'BAN_HANG' ? 'XK' : 'NK';
+        const sttValue = document.getElementById('stt').value || "";
+        document.getElementById('maDon').value = pre + sttValue;
+    }
+
+    async function loadProducts() {
+        try {
+            const res = await fetch(API_URL);
+            products = await res.json();
+            let html = '<option value="">-- Chọn hàng hóa --</option>';
+            products.forEach((p, i) => {
+                html += `<option value="${i}">${p[1]}</option>`;
+            });
+            document.getElementById('spSelect').innerHTML = html;
+        } catch(e) { alert("Lỗi tải hàng hóa!"); }
+    }
+
+    function switchTab(mode) {
+        currentMode = mode;
+        document.getElementById('tabBH').classList.toggle('active', mode === 'BAN_HANG');
+        document.getElementById('tabNK').classList.toggle('active', mode === 'NHAP_KHO');
+        document.getElementById('lblMa').innerText = mode === 'BAN_HANG' ? 'Mã xuất kho:' : 'Mã nhập kho:';
+        document.getElementById('lblDoiTuong').innerText = mode === 'BAN_HANG' ? 'Loại khách:' : 'Nhà cung cấp:';
+        document.getElementById('doiTuong').style.display = mode === 'BAN_HANG' ? 'block' : 'none';
+        document.getElementById('doiTuongNK').style.display = mode === 'NHAP_KHO' ? 'block' : 'none';
+        updateMaDon();
+        cart = []; renderCart();
+    }
+
+    function autoFill() {
+        const idx = document.getElementById('spSelect').value;
+        if(idx === "") return;
+        const giaGoc = products[idx][3] || 0;
+        document.getElementById('gia').value = giaGoc / 1000;
+        updatePreview();
+    }
+
+    function updatePreview() {
+        const gia = document.getElementById('gia').value || 0;
+        const sl = document.getElementById('sl').value || 0;
+        const thucTe = gia * 1000;
+        const tong = thucTe * sl;
+        document.getElementById('previewGia').innerText = `Giá thực: ${thucTe.toLocaleString()} VNĐ | Tổng: ${tong.toLocaleString()} VNĐ`;
+    }
+
+    function addToCart() {
+        const idx = document.getElementById('spSelect').value;
+        if(idx === "") return alert("Vui lòng chọn sản phẩm!");
+        
+        cart.push({
+            tenHang: products[idx][1],
+            size: document.getElementById('size').value,
+            soLuong: document.getElementById('sl').value,
+            donGia: document.getElementById('gia').value // Đây là số rút gọn (ví dụ 500)
+        });
+        renderCart();
+        document.getElementById('spSelect').value = "";
+    }
+
+    function renderCart() {
+        const tbody = document.getElementById('cartTable').querySelector('tbody');
+        tbody.innerHTML = cart.map((item, i) => `
+            <tr>
+                <td><b>${item.tenHang}</b></td>
+                <td><span style="color:#666">${item.size}</span></td>
+                <td>${item.soLuong}</td>
+                <td>${Number(item.donGia).toLocaleString()}</td>
+                <td class="remove-btn" onclick="cart.splice(${i},1);renderCart()">✕</td>
+            </tr>
+        `).join('');
+        document.getElementById('cartCount').innerText = cart.length;
+    }
+
+    async function submitToSheet() {
+        if(cart.length === 0) return alert("Giỏ hàng trống!");
+        const btn = document.getElementById('btnSubmit');
+        btn.innerText = "⏳ ĐANG LƯU..."; btn.disabled = true;
+
+        const payload = {
+            type: currentMode,
+            maDon: document.getElementById('maDon').value,
+            stt: document.getElementById('stt').value,
+            doiTuong: currentMode === 'BAN_HANG' ? document.getElementById('doiTuong').value : document.getElementById('doiTuongNK').value,
+            items: cart
+        };
+
+        try {
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+            alert("✅ Đã lưu thành công!");
+            cart = []; renderCart();
+            document.getElementById('stt').value = parseInt(document.getElementById('stt').value) + 1;
+            updateMaDon();
+        } catch(e) { alert("Lỗi kết nối!"); }
+        
+        btn.innerText = "XÁC NHẬN LƯU (GOOGLE SHEET)"; btn.disabled = false;
+    }
+
+    window.onload = () => { loadProducts(); updateMaDon(); };
+</script>
+</body>
+</html>
