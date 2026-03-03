@@ -3,30 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Kho Testing">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3081/3081559.png">
+    
     <title>Quản Lý Kho Chuyên Nghiệp</title>
     <style>
         :root { --blue: #007aff; --green: #34c759; --red: #ff3b30; --gray: #8e8e93; --light-bg: #f2f2f7; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--light-bg); margin: 0; color: #1c1c1e; overflow-x: hidden; }
         
         .tabs { display: flex; background: #fff; padding: 8px; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .tab { flex: 1; padding: 12px; text-align: center; border-radius: 10px; font-weight: 800; color: var(--gray); cursor: pointer; font-size: 16px; }
+        .tab { flex: 1; padding: 12px; text-align: center; border-radius: 10px; font-weight: 800; color: var(--gray); cursor: pointer; font-size: 16px; transition: 0.2s; }
         .tab.active { background: var(--blue); color: #fff; }
 
         .container { padding: 10px; max-width: 100%; margin: auto; }
         .card { background: #fff; border-radius: 12px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
         
-        h3 { margin: 0 0 10px 0; font-size: 16px; color: #333; display: flex; align-items: center; gap: 5px; }
         label { display: block; font-size: 14px; font-weight: 700; color: #444; margin-bottom: 4px; }
-        
         input, select { 
             width: 100%; padding: 12px; border: 1.5px solid #d1d1d6; border-radius: 8px; 
             font-size: 18px; box-sizing: border-box; background: #fff;
         }
-        input:focus { border-color: var(--blue); outline: none; }
         
         .row { display: flex; gap: 10px; margin-bottom: 8px; align-items: flex-end; }
         .col { flex: 1; }
@@ -38,7 +37,7 @@
         table { width: 100%; border-collapse: collapse; margin-top: 5px; }
         th { text-align: left; font-size: 13px; color: var(--gray); border-bottom: 1px solid #eee; padding: 5px; }
         td { padding: 10px 5px; border-bottom: 1px solid #f2f2f7; font-size: 16px; font-weight: 500; }
-        .remove-btn { color: var(--red); font-weight: bold; font-size: 20px; text-align: center; }
+        .remove-btn { color: var(--red); font-weight: bold; font-size: 20px; text-align: center; cursor: pointer; }
         
         .preview-text { font-size: 13px; color: var(--blue); margin-top: 3px; font-weight: 600; }
     </style>
@@ -63,7 +62,7 @@
             </div>
             <div style="flex: 1.5;">
                 <label id="lblDoiTuong">Loại khách</label>
-                <select id="doiTuong">
+                <select id="doiTuongBH">
                     <option value="Khách lẻ">Khách lẻ</option>
                     <option value="Khách sỉ">Khách sỉ</option>
                 </select>
@@ -77,9 +76,9 @@
                 </select>
             </div>
         </div>
-        <div id="rowTenKhach" style="margin-top: 5px;">
+        <div id="rowTenKhach">
             <label>Tên khách hàng:</label>
-            <input type="text" id="tenKhach" placeholder="Nhập tên khách hàng...">
+            <input type="text" id="tenKhach" placeholder="Nhập tên khách...">
         </div>
     </div>
 
@@ -121,34 +120,126 @@
 </div>
 
 <script>
+    // BƯỚC QUAN TRỌNG: Thay link Google Apps Script của bạn vào đây
     const API_URL = "https://script.google.com/macros/s/AKfycbxNj5ymvkAPzwAMS51webkpiwrsHamFGtZeCsYixt9NJLwLt5-cYTTSKbpqAA7HcEX-vg/exec"; 
-    let currentMode = 'BAN_HANG'; let products = []; let cart = [];
+    
+    let currentMode = 'BAN_HANG'; 
+    let products = []; 
+    let cart = [];
 
+    // Tự động nhảy mã XK1, NK1...
     function updateMaDon() {
         const pre = currentMode === 'BAN_HANG' ? 'XK' : 'NK';
         document.getElementById('maDon').value = pre + (document.getElementById('stt').value || "");
     }
 
+    // Tải hàng hóa từ Sheet
     async function loadProducts() {
-        console.log("Đang tải dữ liệu...");
         try {
             const res = await fetch(API_URL);
-            if (!res.ok) throw new Error('Kết nối API thất bại');
             products = await res.json();
             let html = '<option value="">-- Chọn hàng --</option>';
-            products.forEach((p, i) => { 
-                if(p[1]) html += `<option value="${i}">${p[1]}</option>`; 
-            });
+            products.forEach((p, i) => { html += `<option value="${i}">${p[1]}</option>`; });
             document.getElementById('spSelect').innerHTML = html;
-            console.log("Tải dữ liệu xong!");
-        } catch(e) { 
-            console.error(e);
-            alert("Không load được hàng. Hãy kiểm tra lại link API hoặc quyền truy cập Apps Script!"); 
+        } catch(e) { alert("Lỗi tải hàng!"); }
+    }
+
+    // Chuyển đổi giữa Bán hàng và Nhập kho
+    function switchTab(mode) {
+        currentMode = mode;
+        // Đổi màu tab
+        document.getElementById('tabBH').classList.toggle('active', mode === 'BAN_HANG');
+        document.getElementById('tabNK').classList.toggle('active', mode === 'NHAP_KHO');
+        
+        // Ẩn hiện các ô tương ứng
+        document.getElementById('doiTuongBH').style.display = mode === 'BAN_HANG' ? 'block' : 'none';
+        document.getElementById('doiTuongNK').style.display = mode === 'NHAP_KHO' ? 'block' : 'none';
+        document.getElementById('rowTenKhach').style.display = mode === 'BAN_HANG' ? 'block' : 'none';
+        
+        // Cập nhật mã đơn
+        updateMaDon();
+        // Xóa giỏ hàng cũ
+        cart = []; 
+        renderCart();
+    }
+
+    // Tự điền giá
+    function autoFill() {
+        const idx = document.getElementById('spSelect').value;
+        if(idx !== "") {
+            document.getElementById('gia').value = (products[idx][3] || 0) / 1000;
+            updatePreview();
         }
     }
-    // ... Các hàm khác giữ nguyên ...
+
+    function updatePreview() {
+        const gia = document.getElementById('gia').value || 0;
+        const sl = document.getElementById('sl').value || 0;
+        document.getElementById('previewGia').innerText = `Tổng món: ${(gia * sl * 1000).toLocaleString()} VNĐ`;
+    }
+
+    // Nút Thêm vào giỏ
+    function addToCart() {
+        const idx = document.getElementById('spSelect').value;
+        if(idx === "") return alert("Vui lòng chọn hàng!");
+        
+        cart.push({
+            tenHang: products[idx][1],
+            size: document.getElementById('size').value,
+            soLuong: document.getElementById('sl').value,
+            donGia: document.getElementById('gia').value 
+        });
+        renderCart();
+    }
+
+    function renderCart() {
+        const tbody = document.getElementById('cartTable').querySelector('tbody');
+        tbody.innerHTML = cart.map((item, i) => `
+            <tr>
+                <td>${item.tenHang}</td>
+                <td>${item.size}</td>
+                <td>${item.soLuong}</td>
+                <td>${item.donGia}k</td>
+                <td class="remove-btn" onclick="removeItem(${i})">✕</td>
+            </tr>
+        `).join('');
+    }
+
+    function removeItem(index) {
+        cart.splice(index, 1);
+        renderCart();
+    }
+
+    // Nút Lưu lên Google Sheet
+    async function submitToSheet() {
+        if(cart.length === 0) return alert("Giỏ hàng đang trống!");
+        const btn = document.getElementById('btnSubmit');
+        btn.innerText = "⏳ ĐANG LƯU..."; btn.disabled = true;
+
+        const payload = {
+            type: currentMode,
+            maDon: document.getElementById('maDon').value,
+            stt: document.getElementById('stt').value,
+            trangThai: document.getElementById('trangThai').value,
+            tenKhach: currentMode === 'BAN_HANG' ? document.getElementById('tenKhach').value : "",
+            doiTuong: currentMode === 'BAN_HANG' ? document.getElementById('doiTuongBH').value : document.getElementById('doiTuongNK').value,
+            items: cart
+        };
+
+        try {
+            await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+            alert("✅ Đã lưu thành công!");
+            cart = []; renderCart();
+            // Tăng STT tự động
+            document.getElementById('stt').value = parseInt(document.getElementById('stt').value) + 1;
+            document.getElementById('tenKhach').value = "";
+            updateMaDon();
+        } catch(e) { alert("Lỗi lưu dữ liệu!"); }
+        
+        btn.innerText = "XÁC NHẬN LƯU GOOGLE SHEET"; btn.disabled = false;
+    }
+
     window.onload = () => { loadProducts(); updateMaDon(); };
-</script>
 </script>
 </body>
 </html>
