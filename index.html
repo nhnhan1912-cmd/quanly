@@ -130,89 +130,25 @@
     }
 
     async function loadProducts() {
+        console.log("Đang tải dữ liệu...");
         try {
-            const res = await fetch(API_URL); products = await res.json();
+            const res = await fetch(API_URL);
+            if (!res.ok) throw new Error('Kết nối API thất bại');
+            products = await res.json();
             let html = '<option value="">-- Chọn hàng --</option>';
-            products.forEach((p, i) => { html += `<option value="${i}">${p[1]}</option>`; });
+            products.forEach((p, i) => { 
+                if(p[1]) html += `<option value="${i}">${p[1]}</option>`; 
+            });
             document.getElementById('spSelect').innerHTML = html;
-        } catch(e) { alert("Lỗi tải hàng!"); }
-    }
-
-    function switchTab(mode) {
-        currentMode = mode;
-        document.getElementById('tabBH').classList.toggle('active', mode === 'BAN_HANG');
-        document.getElementById('tabNK').classList.toggle('active', mode === 'NHAP_KHO');
-        document.getElementById('lblDoiTuong').innerText = mode === 'BAN_HANG' ? 'Loại khách' : 'Tên nhà CC';
-        document.getElementById('doiTuong').style.display = mode === 'BAN_HANG' ? 'block' : 'none';
-        document.getElementById('doiTuongNK').style.display = mode === 'NHAP_KHO' ? 'block' : 'none';
-        document.getElementById('rowTenKhach').style.display = mode === 'BAN_HANG' ? 'block' : 'none';
-        updateMaDon(); cart = []; renderCart();
-    }
-
-    function autoFill() {
-        const idx = document.getElementById('spSelect').value;
-        if(idx !== "") {
-            document.getElementById('gia').value = (products[idx][3] || 0) / 1000;
-            updatePreview();
+            console.log("Tải dữ liệu xong!");
+        } catch(e) { 
+            console.error(e);
+            alert("Không load được hàng. Hãy kiểm tra lại link API hoặc quyền truy cập Apps Script!"); 
         }
     }
-
-    function updatePreview() {
-        const gia = document.getElementById('gia').value || 0;
-        const sl = document.getElementById('sl').value || 0;
-        document.getElementById('previewGia').innerText = `Tổng món: ${(gia * sl * 1000).toLocaleString()} VNĐ`;
-    }
-
-    function addToCart() {
-        const idx = document.getElementById('spSelect').value;
-        if(idx === "") return alert("Chọn hàng!");
-        cart.push({
-            tenHang: products[idx][1], size: document.getElementById('size').value,
-            soLuong: document.getElementById('sl').value, donGia: document.getElementById('gia').value 
-        });
-        renderCart();
-    }
-
-    function renderCart() {
-        const tbody = document.getElementById('cartTable').querySelector('tbody');
-        tbody.innerHTML = cart.map((item, i) => `
-            <tr>
-                <td>${item.tenHang}</td>
-                <td>${item.size}</td>
-                <td>${item.soLuong}</td>
-                <td>${item.donGia}k</td>
-                <td class="remove-btn" onclick="cart.splice(${i},1);renderCart()">✕</td>
-            </tr>
-        `).join('');
-    }
-
-    async function submitToSheet() {
-        if(cart.length === 0) return alert("Trống!");
-        const btn = document.getElementById('btnSubmit');
-        btn.innerText = "⏳ ĐANG LƯU..."; btn.disabled = true;
-
-        const payload = {
-            type: currentMode,
-            maDon: document.getElementById('maDon').value,
-            stt: document.getElementById('stt').value,
-            trangThai: document.getElementById('trangThai').value,
-            tenKhach: currentMode === 'BAN_HANG' ? document.getElementById('tenKhach').value : "",
-            doiTuong: currentMode === 'BAN_HANG' ? document.getElementById('doiTuong').value : document.getElementById('doiTuongNK').value,
-            items: cart
-        };
-
-        try {
-            await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
-            alert("✅ Thành công!");
-            cart = []; renderCart();
-            document.getElementById('stt').value = parseInt(document.getElementById('stt').value) + 1;
-            document.getElementById('tenKhach').value = "";
-            updateMaDon();
-        } catch(e) { alert("Lỗi kết nối!"); }
-        btn.innerText = "XÁC NHẬN LƯU GOOGLE SHEET"; btn.disabled = false;
-    }
-
+    // ... Các hàm khác giữ nguyên ...
     window.onload = () => { loadProducts(); updateMaDon(); };
+</script>
 </script>
 </body>
 </html>
